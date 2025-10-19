@@ -1,16 +1,10 @@
 # Função Heritor - Cálculo Atuarial de Pensão por Morte
 
-Modelo completo para **cálculo atuarial de pensão por morte de servidores estatutários**, utilizando dados reais da PNAD Contínua 2023 (IBGE) e tábuas de mortalidade SOA.
+Modelo atuarial para **cálculo de pensão por morte de servidores estatutários** usando amostragem Monte Carlo.
 
----
-
-## ⚠️ IMPORTANTE: Dados Reais
-
-Este projeto **NÃO utiliza dados sintéticos**. É obrigatório baixar os microdados oficiais:
-- **PNADC 2023** (principal) - [Download via IBGE](https://www.ibge.gov.br/estatisticas/sociais/trabalho/9171-pesquisa-nacional-por-amostra-de-domicilios-continua-mensal.html)
-- **PNAD 2011** (opcional, validação temporal)
-
-**Aplicação**: Amostragem Monte Carlo para cálculo de reservas técnicas de pensão por morte.
+**Fontes de dados**:
+- PNAD Contínua 2023 (IBGE) - características demográficas
+- AT-2012 IAM Basic (SOA) - tábua de mortalidade
 
 ---
 
@@ -71,14 +65,13 @@ using Pkg
 Pkg.instantiate()
 ```
 
-### 3. Baixar Dados IBGE
+### 3. Baixar Dados
 
 ```bash
 ./00_download_pnadc2023.sh
 ```
 
-Ou baixe manualmente de:
-- [PNADC 2023 - FTP IBGE](ftp://ftp.ibge.gov.br/Trabalho_e_Rendimento/Pesquisa_Nacional_por_Amostra_de_Domicilios_continua/Anual/Microdados/2023/)
+Ou baixe manualmente da [PNADC 2023 no site do IBGE](https://www.ibge.gov.br/estatisticas/sociais/trabalho/9171-pesquisa-nacional-por-amostra-de-domicilios-continua-mensal.html).
 
 ---
 
@@ -249,7 +242,6 @@ Valor presente **esperado** do custo de pensões para servidor **VIVO** de idade
 
 - **[`docs/METODOLOGIA.md`](docs/METODOLOGIA.md)** - Metodologia técnica detalhada
 - **`DECISAO_FINAL_CONJUGALIDADE.md`** - Fundamentação de escolhas metodológicas
-- **`.claude/skills/`** - Skills de documentação PNADC/PNAD
 
 ---
 
