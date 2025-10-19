@@ -10,9 +10,10 @@ Documentação técnica detalhada do modelo atuarial de pensão por morte.
 4. [Servidor Público](#servidor-público)
 5. [Age Gap](#age-gap)
 6. [Filhos Dependentes](#filhos-dependentes)
-7. [Encargo Atuarial](#encargo-atuarial)
-8. [Reserva Matemática](#reserva-matemática)
-9. [Variáveis do IBGE](#variáveis-do-ibge)
+7. [Distribuições Paramétricas para Simulação Monte Carlo](#distribuições-paramétricas-para-simulação-monte-carlo)
+8. [Encargo Atuarial](#encargo-atuarial)
+9. [Reserva Matemática](#reserva-matemática)
+10. [Variáveis do IBGE](#variáveis-do-ibge)
 
 ---
 
@@ -164,13 +165,25 @@ age_gap = idade_referência - idade_cônjuge
 
 ### Aplicação para Função Heritor
 
-Dado idade do servidor falecido, estima idade esperada do beneficiário (cônjuge):
+Amostragem Monte Carlo da idade do cônjuge beneficiário:
 
 ```
-idade_cônjuge = idade_servidor - age_gap_médio(idade_servidor, sexo_servidor)
+age_gap ~ μ(idade, sexo) + σ(idade, sexo) × T(df=5)
+idade_cônjuge = idade_servidor - age_gap
 ```
 
-**Exemplo**: Servidor homem de 60 anos → age_gap médio ≈ +4.8 anos → cônjuge esperada: ~55 anos
+Onde:
+- `μ, σ`: parâmetros suavizados (credibilidade Bühlmann-Straub)
+- `T(df=5)`: distribuição t-Student com 5 graus de liberdade
+- Truncamento final: [15, 100] anos
+
+**Exemplo Monte Carlo** (servidor homem, 60 anos):
+- Parâmetros: μ ≈ 4.8 anos, σ ≈ 8.5 anos
+- Simulando 10.000 cenários:
+  - **P50** (mediana): ~55 anos
+  - **P10-P90**: 46-64 anos
+  - Variância captura incerteza demográfica
+- Resultado: distribuição de encargos (não valor único)
 
 ---
 
@@ -194,6 +207,77 @@ Por idade e sexo do responsável:
 
 - Scripts: `09_processar_filhos.jl`, `10_tabua_filhos.jl`, `11_credibilidade_filhos.jl`
 - Resultado: `resultados/filhos_credivel.csv`
+
+---
+
+## Distribuições Paramétricas para Simulação Monte Carlo
+
+Após obter parâmetros suavizados (μ, σ) via credibilidade Bühlmann-Straub, usamos distribuições paramétricas para amostrar características de beneficiários em simulações atuariais.
+
+### Age Gap (Idade do Cônjuge)
+
+**Distribuição**: t-Student com 5 graus de liberdade
+
+```
+age_gap ~ μ + σ × T(df=5)
+idade_cônjuge = idade_servidor - age_gap
+```
+
+**Fundamentação**:
+- Análise exploratória (`06_analise_distribuicao_age_gap.jl`) mostrou:
+  - **Curtose alta** (2-7): Caudas mais pesadas que Normal (curtose ≈ 0)
+  - **Testes de normalidade**: Maioria rejeita hipótese nula (Anderson-Darling p < 0.05)
+  - **Casais extremos**: Diferenças ±20-30 anos mais frequentes que Normal preveria
+
+**Truncamento**: [15, 100] anos para idade final do cônjuge
+- Remove caudas absurdas (bebês, 120+ anos)
+- Afeta < 0.5% das amostras
+- Preserva caudas pesadas dentro de limites biológicos
+
+**Comparação com Normal**:
+
+| Característica | Normal | t-Student(df=5) |
+|----------------|--------|-----------------|
+| Caudas | Leves (exponenciais) | Pesadas (polinomiais) |
+| Curtose | 0 | 6 |
+| P(\|X\| > 3σ) | ~0.3% | ~1-2% |
+
+### Idade dos Filhos
+
+**Distribuição**: Normal
+
+```
+idade_filho ~ Normal(μ, σ)
+```
+
+**Truncamento**: [0, 24] anos
+- Garante elegibilidade legal para pensão
+- Remove valores impossíveis (negativos, adultos)
+
+### Outras Variáveis
+
+**Bernoulli** (casado, tem_filho):
+```
+casado ~ Bernoulli(P_suavizado)
+tem_filho ~ Bernoulli(prev_filho_suavizado)
+```
+
+**Poisson condicional** (n_filhos | tem_filho):
+```
+n_filhos ~ Poisson(λ) com λ = n_filhos_medio / P_filho
+n_filhos ≥ 1  (condicional)
+```
+
+### Implementação
+
+- **Módulo**: `src/Heritor.jl` - função `samplear_caracteristicas_heritor()`
+- **Script age gap**: `07_samplear_age_gap.jl`
+- **Análise**: `resultados/age_gap_diagnostico.txt`
+
+### Referências
+
+- Anderson-Darling: Stephens (1974). "EDF Statistics for Goodness of Fit"
+- t-Student para caudas pesadas: Fama (1965). "Portfolio Analysis in a Stable Paretian Market"
 
 ---
 
